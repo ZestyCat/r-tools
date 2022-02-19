@@ -1,8 +1,13 @@
 library(data.table)
 
-data <- fread("data/ad_viz_plotval_data.csv", select = c("Date", "Daily Mean PM2.5 Concentration", "Site ID"))
+data <- fread("data/alabama_pm.csv",
+              select = c("Date",
+                         "Daily Mean PM2.5 Concentration",
+                         "UNITS",
+                         "Site ID"))
 
-sites <- unique(data[["Site ID"]])
-conc <- data[["Daily Mean PM2.5 Concentration"]]
+data[["Attainment"]] <- data[["Daily Mean PM2.5 Concentration"]] < 35
 
-data[`Site ID` == sites[1] & `Daily Mean PM2.5 Concentration` > 10]
+data[Attainment == FALSE]
+
+table(data[["Attainment"]])
