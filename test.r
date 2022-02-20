@@ -1,4 +1,3 @@
-library(dplyr)
 library(data.table)
 library(readr)
 
@@ -14,4 +13,4 @@ for (i in seq_along(data[[1]])) {
     }
 }
 
-data
+
