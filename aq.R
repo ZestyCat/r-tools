@@ -33,14 +33,14 @@ ggplot(data) +
                  hjust = 0.2,
                  vjust = -1),
              data = data.frame()) +
-   labs(title = "Measured PM2.5 concentration by date",
+   geom_smooth(aes(Date, conc)) +
+   labs(title = "Measured concentration by date",
         x = "Date",
         y = "Concentration (ug/m^3)"
    ) +
    scale_color_discrete(name = "Site") +
    theme(
-        plot.title = element_text(size = 30, face = "bold"),
-   ) +
+        plot.title = element_text(size = 30, face = "bold")) +
    theme_clean()
 
 data
