@@ -39,5 +39,5 @@ symptoms <- fread("data/2021VAERSSYMPTOMS.csv",
 v <- data %>%
     left_join(vax, by = "VAERS_ID") %>%
     left_join(symptoms, by = "VAERS_ID") %>%
-    filter(grepl("bald|alopecia|hair loss|hair|beard", SYMPTOM_TEXT, ignore.case = TRUE) == TRUE) %>%
+    filter(VAX_TYPE == "COVID19" & grepl("bald|alopecia|hair loss|hair|beard", SYMPTOM_TEXT, ignore.case = TRUE) == TRUE) %>%
     distinct(VAERS_ID, .keep_all = TRUE)
