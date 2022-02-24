@@ -1,15 +1,17 @@
 library(ggplot2)
 library(ggthemes)
+library(dplyr)
+library(data.table)
 
 open_pmdata <- function(file) {
-    library(data.table)
     data <- fread(file, select = c(1, 5, 6, 3, 8, 12))
     data <- setNames(data, c("date", "conc", "units", "site", "name", "param"))
+    data <- data[, date := as.Date(date, format = "%m/%d/%y")]
+    data <- data[, site := as.character(site)]
     return(data)
 }
 
 site_yearly_mean <- function(aq_data) {
-    library(dplyr)
     mean <- group_by(aq_data, site, name) %>%
             summarize(mean_conc_ugm3 = mean(conc)) %>%
             mutate(attainment = mean_conc_ugm3 < 13,
