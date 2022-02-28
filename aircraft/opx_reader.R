@@ -27,11 +27,30 @@ op_head <- function(opx) {
         data <- fread(text = str_squish(opx[indeces[i] : (indeces[i] + 6)]),
               sep = ":",
               col.names = c("param", "value"))
-        power <- word(str_squish((opx[indeces[i] + 10])), 3, 4)
-        heads[[i]] <- dcast(melt(rbind(data, list(param = "POWER SETTING", value = power)), id.vars = "param"), variable ~ param)[, 2:7]
+        power <- word(
+                      str_squish((opx[indeces[i] + 10])), 
+                      3, 4)
+        heads[[i]] <- dcast(
+                            melt(
+                                 rbind(data, 
+                                       list(param = "POWER SETTING",
+                                            value = power)),
+                                 id.vars = "param"),
+                            variable ~ param)[, 2:7]
     }
     return(rbindlist(heads))
 }
 
-a <- op_head(text)
-a
+op_data <- function(opx) {
+    indeces <- op_indeces(opx)
+    data_list <- list()
+    for (i in seq_along(indeces)) {
+        data <- fread(
+                text =
+                str_squish(opx[(indeces[i] + 12):(indeces[i] + 35)]))
+        data_list[[i]] <- data
+    }
+    return(data_list)
+}
+
+op_data(text)
