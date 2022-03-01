@@ -6,31 +6,31 @@ library(data.table)
 
 text <- readLines("~/R/r-tools/data/O10_output_2-28-22.txt")
 
-op_indeces <- function(opx) {
-    indeces <- c()
-
+# Get the starting lines for each power setting in the data file
+op_lines <- function(opx) { 
+    lines <- c()
     for (i in seq_along(text)) {
         ifelse(
                grepl("FLIGHT AIRCRAFT ID:", text[i]) == TRUE,
-               indeces <- c(indeces, i),
+               lines <- c(lines, i),
                next
         )
     }
-
-    return(indeces)
+    return(lines)
 }
 
-op_head <- function(opx) {
-    indeces <- op_indeces(opx)
-    heads <- list()
-    for (i in seq_along(indeces)) {
-        data <- fread(text = str_squish(opx[indeces[i] : (indeces[i] + 6)]),
+# Get the information about the power setting
+op_info <- function(opx) {
+    lines <- op_lines(opx)
+    info_list <- list()
+    for (i in seq_along(lines)) {
+        data <- fread(text = str_squish(opx[lines[i] : (lines[i] + 6)]),
               sep = ":",
               col.names = c("param", "value"))
         power <- word(
-                      str_squish((opx[indeces[i] + 10])), 
+                      str_squish((opx[lines[i] + 10])), 
                       3, 4)
-        heads[[i]] <- dcast(
+        info_list[[i]] <- dcast(
                             melt(
                                  rbind(data, 
                                        list(param = "POWER SETTING",
@@ -38,19 +38,31 @@ op_head <- function(opx) {
                                  id.vars = "param"),
                             variable ~ param)[, 2:7]
     }
-    return(rbindlist(heads))
+    return(rbindlist(info_list))
 }
 
+# Get the noise data
 op_data <- function(opx) {
-    indeces <- op_indeces(opx)
+    lines <- op_lines(opx)
     data_list <- list()
-    for (i in seq_along(indeces)) {
+    for (i in seq_along(lines)) {
         data <- fread(
                 text =
-                str_squish(opx[(indeces[i] + 12):(indeces[i] + 35)]))
+                str_squish(opx[(lines[i] + 12):(lines[i] + 35)]))
         data_list[[i]] <- data
     }
     return(data_list)
 }
 
-op_data(text)
+op_info_test <- function(opx) {
+    lines <- op_lines(opx)
+    info_list <- list()
+    for (i in seq_along(lines)) {
+        #info_list[[i]] <- str_squish(opx[lines[i] : (lines[i] + 5)])
+        item <- info_list[[i]] <- str_squish(opx[lines[i] : (lines[i] + 5)])
+        param_value <- str_split(item, ": ")
+    }
+    #print(data.table(info_list))
+}
+
+op_info_test(text)

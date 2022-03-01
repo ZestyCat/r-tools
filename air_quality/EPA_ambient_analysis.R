@@ -6,8 +6,8 @@ library(dplyr)
 library(data.table)
 library(RColorBrewer)
 
-open_data <- function(file) {
-    data <- fread(file, select = c(1, 5, 6, 3, 8, 12))
+open_data <- function(connection) {
+    data <- fread(connection, select = c(1, 5, 6, 3, 8, 12))
     data <- setNames(data, c("date", "conc", "units", "site", "name", "param"))
     data <- data[, date := as.Date(date, format = "%m/%d/%y")]
     data <- data[, site := as.character(site)]
