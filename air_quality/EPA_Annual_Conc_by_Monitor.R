@@ -1,5 +1,6 @@
 library(tidyverse)
 
+# Downloads EPA annual concentration by monitor based on parameter and state
 download <- function(year, param = NULL, state = NULL) {
     temp <- tempfile()
     url <- paste("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
