@@ -31,13 +31,16 @@ bar <- function(table,
         geom_col(aes(x = reorder(name, mean_conc), y = mean_conc, fill = attainment)) +
         geom_hline(yintercept = 13, linetype = "dashed") +
         coord_flip() +
-        scale_fill_discrete(name = "Attainment", direction = -1) +
+        scale_fill_discrete(name = "", direction = -1) +
         labs(
             title = "Annual mean PM2.5 conentration by site",
-            caption = "Dashed line indicates 13ug/M^3 NAAQS",
+            caption = "Nonattainment zones exceed 13ug/M^3 NAAQS",
             y = "Concentration (ug/m^3)",
             x = ""
         ) +
+        scale_y_continuous(
+            breaks = c(0, 2.5, 5, 7.5, 10, 13, 15)
+        )
         theme(
               axis.text.x = element_text(angle = 90),
               axis.text.y = element_text(angle = 90)
@@ -62,9 +65,13 @@ point <- function(table,
         geom_hline(yintercept = 35, linetype = "dashed") +
         labs(
             title = "Daily mean PM2.5 conentration by date",
-            caption = "Dashed line indicates 35ug/M^3 NAAQS",
+            caption = "Nonattainment zones exceed 35ug/M^3 NAAQS",
             y = "Concentration (ug/m^3)",
             x = ""
+        ) +
+        scale_color_discrete(name = "Site name") +
+        scale_y_continuous(
+            breaks = c(seq(0, 90, 10), 35)
         ) +
         theme_bw()
     ggsave(paste(savedir, 
