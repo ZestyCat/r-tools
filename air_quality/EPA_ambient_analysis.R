@@ -77,6 +77,7 @@ point <- function(table,
     print("Plot saved")
 }
 
-tbl <- open_data("data/alabama_pm.csv")
+tbl <- open_data("~/R/r-tools/data/alabama_pm.csv")
 ym <- site_yearly_mean(tbl)
-point(tbl, savedir = "/mnt/c/Users/gregory.bizup/Pictures/")
+point(tbl)
+bar(ym)
