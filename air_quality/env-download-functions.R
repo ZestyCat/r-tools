@@ -28,38 +28,46 @@ download_epa <- function(year, param = NULL, state = NULL) {
 # Fetches from ftp://ftp.ncdc.noaa.gov/pub/data/
 download_ncdc <- function(date          = "2022-01-01",
                           icao_callsign = "KNZY",
-                          datasets      = 6401) {
-    data <- list()
-    for (i in seq_along(datasets)) {
-        con <- paste(
-                    "ftp://ftp.ncdc.noaa.gov/pub/data/",
-                     ifelse(datasets[i] == 6401,     # If 6401,
-                            "asos-fivemin",          # return asos-fivemin
-                     ifelse(datasets[i] == 6405 |    # else if 6405 or 6406,
-                            datasets[i] == 6406,     # or 6406
-                            "asos-onemin",           # return asos-onemin
-                               stop(print_info(dataset = "asos",
-                                               error   = TRUE)))),
-                     "/",
-                     datasets[i], "-",
-                     format(as.Date(date), format = "%Y"), "/",
-                     datasets[i], "0",
-                     icao_callsign,
-                     format(as.Date(date), format = "%Y"),
-                     format(as.Date(date), format = "%m"),
-                     ".dat",
-                     sep = "")
+                          dataset       = 6405,
+                          timeframe     = "day") {
 
-        lines <- str_squish(readLines(con))
-
-        if (length(datasets) == 1) { # If only one dataset, return tibble
-            data  <- read_table(lines, col_names = FALSE)
-            return(data)
-        } else {                     # If multiple datasets, return as list
-            data[[i]] <- read_table(lines, col_names = FALSE)
-        }
+    year  <- format(as.Date(date), format = "%Y")
+    month <- format(as.Date(date), format = "%m")
+    day   <- format(as.Date(date), format = "%d")
+    
+    get_url <- function(cs = icao_callsign,
+                        ds = dataset, 
+                        y = year, 
+                        m = month) { 
+        return(paste(
+                "ftp://ftp.ncdc.noaa.gov/pub/data/",
+                 ifelse(ds == 6401,          # If 6401,
+                        "asos-fivemin",      # return asos-fivemin
+                 ifelse(ds == 6405 |         # else if 6405
+                        ds == 6406,          # or 6406,
+                        "asos-onemin",       # return asos-onemin
+                           stop(print_info(ds = "asos",
+                                           error   = TRUE)))),
+                 "/", ds, "-", y, "/", ds, "0", cs, y, m, ".dat",
+                 sep = "")
+        )
     }
-    return(data)
+
+        if (timeframe == "day") {
+               con <- get_url()
+               lines <- str_squish(readLines(con)) # Trim excess whitespace
+               data  <- read_table(lines, col_names = FALSE)
+               return(filter_day(data, icao_callsign, year, month, day))
+        } else if (timeframe == "month") {
+               con <- get_url()
+               lines <- str_squish(readLines(con)) # Trim excess whitespace
+               data  <- read_table(lines, col_names = FALSE)
+               return(data)
+        } else if (timeframe == "year") {
+               return(print("Do yearly stuff"))
+        } else {
+            stop(print("Choose a valid timeframe (day/month/year)"))
+        }
 }
 
 print_info <- function(dataset = "asos", error = FALSE) {
@@ -75,4 +83,13 @@ print_info <- function(dataset = "asos", error = FALSE) {
     return(msg)
 }
 
-d <- download_ncdc()
+filter_day <- function(data, icao_callsign, year, month, day) {
+    return(
+        filter(data, # Filters second column for string like "NZY20200527"
+           grepl(paste(
+              substr(icao_callsign, 2, 4), year, month, day, sep = ""), d[[2]])
+        )
+    )
+}
+
+
