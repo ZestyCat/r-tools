@@ -30,16 +30,21 @@ get_epa <- function(year, param = NULL, state = NULL) {
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
-get_ncdc <- function(dates = c("2020-05-03", "2020-06-15"),
-                                cs = "KNZY",
-                                ds = 6405) {
+get_ncdc <- function(dates = c("2020-05-03", "2020-05-15"), cs = "KNZY") {
     dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
-    data <- rbindlist(lapply(unique(get_ncdc_url(cs, ds, dates)), trim_read))
+
+    d6405 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6405, dates)), trim_read))
+    d6406 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6406, dates)), trim_read))
+
     search_regex <- paste0(
-                           paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
-                                  format(dates, format = "%Y%m%d")),
-                           collapse="|") # Separate vector with "|"
-    return(filter(data, grepl(search_regex, data[[2]])))
+                       paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
+                              format(dates, format = "%Y%m%d")),
+                       collapse = "|") # Separate vector with "|"
+
+    data <- full_join(d6405, d6406, by = c("X2" = "X2")) %>%
+            filter(grepl(search_regex, X2))
+        
+    return(data)
 }
 
 trim_read <- function(con) {
