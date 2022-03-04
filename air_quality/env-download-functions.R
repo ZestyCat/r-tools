@@ -1,14 +1,14 @@
 library(tidyverse)
+library(data.table)
 
 # Funtions for fetching environmental data from various sources
 
 # Download EPA annual concentration by monitor based on parameter and state
-download_epa <- function(year, param = NULL, state = NULL) {
+get_epa <- function(year, param = NULL, state = NULL) {
     temp <- tempfile()
-    url  <- paste("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
-                 year, 
-                 ".zip", 
-                 sep = "")
+    url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
+                 year,
+                 ".zip")
     download.file(url, temp) # Save data at url into tempfile
     data <- read_csv(temp)
 
@@ -23,73 +23,38 @@ download_epa <- function(year, param = NULL, state = NULL) {
     return(data)
 }
 
-
-# Download weather data from NCDC based on data parameters
+# Download weather data from NCDC for specified parameters
 # Fetches from ftp://ftp.ncdc.noaa.gov/pub/data/
-download_ncdc <- function(date          = "2022-01-01",
-                          icao_callsign = "KNZY",
-                          dataset       = 6405,
-                          timeframe     = "day") {
-
-    year  <- format(as.Date(date), format = "%Y")
-    month <- format(as.Date(date), format = "%m")
-    day   <- format(as.Date(date), format = "%d")
-    
-    get_url <- function(cs = icao_callsign,
-                        ds = dataset, 
-                        y = year, 
-                        m = month) { 
-        return(paste(
-                "ftp://ftp.ncdc.noaa.gov/pub/data/",
-                 ifelse(ds == 6401,          # If 6401,
-                        "asos-fivemin",      # return asos-fivemin
-                 ifelse(ds == 6405 |         # else if 6405
-                        ds == 6406,          # or 6406,
-                        "asos-onemin",       # return asos-onemin
-                           stop(print_info(ds = "asos",
-                                           error   = TRUE)))),
-                 "/", ds, "-", y, "/", ds, "0", cs, y, m, ".dat",
-                 sep = "")
-        )
-    }
-
-        if (timeframe == "day") {
-               con <- get_url()
-               lines <- str_squish(readLines(con)) # Trim excess whitespace
-               data  <- read_table(lines, col_names = FALSE)
-               return(filter_day(data, icao_callsign, year, month, day))
-        } else if (timeframe == "month") {
-               con <- get_url()
-               lines <- str_squish(readLines(con)) # Trim excess whitespace
-               data  <- read_table(lines, col_names = FALSE)
-               return(data)
-        } else if (timeframe == "year") {
-               return(print("Do yearly stuff"))
-        } else {
-            stop(print("Choose a valid timeframe (day/month/year)"))
-        }
+# dates: date range to be extracted c(YYYY-MM-DD, YYYY-MM-DD)
+# cs: ICAO Callsign (e.g. "KNZY")
+# ds: Dataset (e.g. 6405, 6406, 6401)
+# Makes a sequence of dates, makes url list, reads each url, binds data
+# Filters where the date is not equal to the last day
+get_ncdc <- function(dates = c("2020-05-03", "2020-06-15"),
+                                cs = "KNZY",
+                                ds = 6405) {
+    dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
+    data <- rbindlist(lapply(unique(get_ncdc_url(cs, ds, dates)), trim_read))
+    search_regex <- paste0(
+                           paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
+                                  format(dates, format = "%Y%m%d")),
+                           collapse="|") # Separate vector with "|"
+    return(filter(data, grepl(search_regex, data[[2]])))
 }
 
-print_info <- function(dataset = "asos", error = FALSE) {
-    msg <- ""
-    if (dataset == "asos") {
-        msg <- paste(
-                "Valid ASOS datasets:\n",
-                "1. 6401 (5 minute)\n",
-                "2. 6405 (1 minute wind)\n",
-                "3. 6406 (1 minute temperature)")
-    }
-    if (error == TRUE) msg <- paste("\nError: Invalid dataset value.\n", msg)
-    return(msg)
+trim_read <- function(con) {
+       lines <- str_squish(readLines(con)) # Trim excess whitespace
+       data  <- read_table(lines, col_names = FALSE)
+       return(data)
 }
 
-filter_day <- function(data, icao_callsign, year, month, day) {
-    return(
-        filter(data, # Filters second column for string like "NZY20200527"
-           grepl(paste(
-              substr(icao_callsign, 2, 4), year, month, day, sep = ""), d[[2]])
-        )
+get_ncdc_url <- function(cs, ds, date) { # Callsign, dataset, year, month
+    y <- format(date, format = "%Y")
+    m <- format(date, format = "%m")
+    return(paste0("ftp://ftp.ncdc.noaa.gov/pub/data/",
+             ifelse(ds == 6401, "asos-fivemin",
+             ifelse(ds == 6405 | ds == 6406, "asos-onemin",
+             stop(print_info(ds = "asos", error = TRUE)))),
+             "/", ds, "-", y, "/", ds, "0", cs, y, m, ".dat")
     )
 }
-
-
