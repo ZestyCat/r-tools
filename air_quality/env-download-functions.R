@@ -36,13 +36,14 @@ get_ncdc <- function(dates = c("2020-05-03", "2020-05-15"), cs = "KNZY") {
     d6405 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6405, dates)), trim_read))
     d6406 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6406, dates)), trim_read))
 
-    search_regex <- paste0(
+    search_regex <- paste0( # Make a "|" separated regex of every date in rane
                        paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
                               format(dates, format = "%Y%m%d")),
                        collapse = "|") # Separate vector with "|"
 
     data <- full_join(d6405, d6406, by = c("X2" = "X2")) %>%
-            filter(grepl(search_regex, X2))
+            filter(grepl(search_regex, X2)) %>%
+            mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
         
     return(data)
 }
