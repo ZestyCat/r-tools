@@ -41,7 +41,7 @@ get_ncdc <- function(dates = c("2020-05-03", "2020-05-15"), cs = "KNZY") {
                               format(dates, format = "%Y%m%d")),
                        collapse = "|") # Separate vector with "|"
 
-    data <- full_join(d6405, d6406, by = c("X2" = "X2")) %>%
+    data <- left_join(d6405, d6406, by = c("X2" = "X2")) %>%
             filter(grepl(search_regex, X2)) %>%
             mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
         
