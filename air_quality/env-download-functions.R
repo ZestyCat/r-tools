@@ -30,22 +30,30 @@ get_epa <- function(year, param = NULL, state = NULL) {
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
-get_ncdc <- function(dates = c("2020-05-03", "2020-05-15"), cs = "KNZY") {
+get_ncdc <- function(dates, cs, download = FALSE) {
     dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
 
-    d6405 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6405, dates)), trim_read))
-    d6406 <- rbindlist(lapply(unique(get_ncdc_url(cs, 6406, dates)), trim_read))
 
     search_regex <- paste0( # Make a "|" separated regex of every date in rane
                        paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
                               format(dates, format = "%Y%m%d")),
                        collapse = "|") # Separate vector with "|"
 
-    data <- left_join(d6405, d6406, by = c("X2" = "X2")) %>%
+    d6405 <- rbindlist(lapply(unique(get_url(cs, 6405, dates)), trim_read)) %>%
             filter(grepl(search_regex, X2)) %>%
             mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
-        
-    return(data)
+
+    d6406 <- rbindlist(lapply(unique(get_url(cs, 6406, dates)), trim_read)) %>%
+            filter(grepl(search_regex, X2)) %>%
+            mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
+
+    if (download == TRUE) {
+        fwrite(d6405, paste0("./", "6405", cs, dates[1], dates[2], ".csv"))
+        fwrite(d6406, paste0("./", "6406", cs, dates[1], dates[2], ".csv"))
+    }
+
+    return(list(d6405 = d6405, d6406 = d6406))
+
 }
 
 trim_read <- function(con) {
@@ -54,7 +62,7 @@ trim_read <- function(con) {
        return(data)
 }
 
-get_ncdc_url <- function(cs, ds, date) { # Callsign, dataset, year, month
+get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
     y <- format(date, format = "%Y")
     m <- format(date, format = "%m")
     return(paste0("ftp://ftp.ncdc.noaa.gov/pub/data/",
