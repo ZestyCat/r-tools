@@ -30,20 +30,28 @@ get_epa <- function(year, param = NULL, state = NULL) {
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
-get_ncdc <- function(dates, cs, download = FALSE) {
+get_asos <- function(dates, cs, download = FALSE) {
     dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
 
 
-    search_regex <- paste0( # Make a "|" separated regex of every date in rane
+    search_regex <- paste0( # Make a "|" separated regex of every date in range
                        paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
                               format(dates, format = "%Y%m%d")),
                        collapse = "|") # Separate vector with "|"
 
-    d6405 <- rbindlist(lapply(unique(get_url(cs, 6405, dates)), trim_read)) %>%
+    d6405 <- rbindlist(
+                lapply(
+                    unique(get_url(cs, 6405, dates)),
+                trim_read),
+              fill = TRUE) %>%
             filter(grepl(search_regex, X2)) %>%
             mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
 
-    d6406 <- rbindlist(lapply(unique(get_url(cs, 6406, dates)), trim_read)) %>%
+    d6406 <- rbindlist(
+                lapply(
+                    unique(get_url(cs, 6406, dates)),
+                trim_read),
+             fill = TRUE) %>%
             filter(grepl(search_regex, X2)) %>%
             mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
 
@@ -65,7 +73,7 @@ trim_read <- function(con) {
 get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
     y <- format(date, format = "%Y")
     m <- format(date, format = "%m")
-    return(paste0("ftp://ftp.ncdc.noaa.gov/pub/data/",
+    return(paste0("https://www.ncei.noaa.gov/pub/data/",
              ifelse(ds == 6401, "asos-fivemin",
              ifelse(ds == 6405 | ds == 6406, "asos-onemin",
              stop(print_info(ds = "asos", error = TRUE)))),
