@@ -33,7 +33,6 @@ get_epa <- function(year, param = NULL, state = NULL) {
 get_asos <- function(dates, cs, download = FALSE) {
     dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
 
-
     search_regex <- paste0( # Make a "|" separated regex of every date in range
                        paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
                               format(dates, format = "%Y%m%d")),
@@ -42,32 +41,54 @@ get_asos <- function(dates, cs, download = FALSE) {
     d6405 <- rbindlist(
                 lapply(
                     unique(get_url(cs, 6405, dates)),
-                trim_read),
+                read_6405),
               fill = TRUE) %>%
-            filter(grepl(search_regex, X2)) %>%
-            mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
+            filter(grepl(search_regex, time)) %>%
+            mutate(time =
+                as.POSIXct(substr(time, 4, 17), format = "%Y%m%d%H%M"))
 
     d6406 <- rbindlist(
                 lapply(
                     unique(get_url(cs, 6406, dates)),
-                trim_read),
+                read_6406),
              fill = TRUE) %>%
-            filter(grepl(search_regex, X2)) %>%
-            mutate(X2 = as.POSIXct(substr(X2, 4, 17), format = "%Y%m%d%H%M"))
+            filter(grepl(search_regex, time)) %>%
+            mutate(time =
+                as.POSIXct(substr(time, 4, 17), format = "%Y%m%d%H%M"))
+
+    d <- left_join(d6405, d6406, by = c("station", "time"))
 
     if (download == TRUE) {
-        fwrite(d6405, paste0("./", "6405", cs, dates[1], dates[2], ".csv"))
-        fwrite(d6406, paste0("./", "6406", cs, dates[1], dates[2], ".csv"))
+        fwrite(d, paste0("./", "6405", cs, dates[1], dates[2], ".csv"))
     }
-
-    return(list(d6405 = d6405, d6406 = d6406))
-
+    return(d)
 }
 
-trim_read <- function(con) {
-       lines <- str_squish(readLines(con)) # Trim excess whitespace
-       data  <- read_table(lines, col_names = FALSE)
-       return(data)
+read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
+    data <- read_fwf(con, fwf_positions(
+                                        c(1, 11, 72, 78, 82, 88),
+                                        c(9, 30, 74, 79, 84, 89),
+                                        c("station", "time",
+                                          "2min avg wind dir (deg)",
+                                          "2min avg wind speed (kts)",
+                                          "5sec avg wind dir (deg)",
+                                          "5sec avg wind speed (kts)")))
+    return(data)
+}
+
+read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
+    data <- read_fwf(con, fwf_positions(
+                                        c(1, 11, 33, 46, 71, 79, 87, 96, 101),
+                                        c(9, 30, 34, 49, 76, 84, 92, 97, 102),
+                                        c("station", "time",
+                                          "Precipitation",
+                                          "Amount (1/100 inch)",
+                                          "Pressure 1 (inches Hg)",
+                                          "Pressure 2 (inches Hg)",
+                                          "Pressure 3 (inches Hg)",
+                                          "Dry bulb temp",
+                                          "Dew point temp")))
+    return(data)
 }
 
 get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
