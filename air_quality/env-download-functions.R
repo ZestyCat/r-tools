@@ -59,9 +59,12 @@ get_asos <- function(dates, cs, download = FALSE) {
     d <- left_join(d6405, d6406, by = c("station", "time"))
 
     if (download == TRUE) {
-        fwrite(d, paste0("./", "6405", cs, dates[1], dates[2], ".csv"))
+        fwrite(d, paste0("./asos_download_",
+                         as.character(format(Sys.time(),
+                                             format = "%Y-%m-%d_%H%M%S")),
+                         ".csv"))
     }
-    return(search_regex)
+    return(d)
 }
 
 read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
