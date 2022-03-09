@@ -26,7 +26,7 @@ get_epa <- function(year, param = NULL, state = NULL) {
 # Download weather data from NCDC for specified parameters
 # Fetches from ftp://ftp.ncdc.noaa.gov/pub/data/
 # dates: date range to be extracted c(YYYY-MM-DD, YYYY-MM-DD)
-# cs: ICAO Callsign (e.g. "KNZY")
+# cs: ICAO Callsign e.g. "KNZY", or vector of cs e.g. c("KNZY", "KHSV")
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
@@ -61,11 +61,12 @@ get_asos <- function(dates, cs, download = FALSE) {
     if (download == TRUE) {
         fwrite(d, paste0("./", "6405", cs, dates[1], dates[2], ".csv"))
     }
-    return(d)
+    return(search_regex)
 }
 
 read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
-    data <- read_fwf(con, fwf_positions(
+    data <- tryCatch( {
+                        read_fwf(con, fwf_positions(
                                         c(1, 11, 72, 78, 82, 88),
                                         c(9, 30, 74, 79, 84, 89),
                                         c("station", "time",
@@ -73,11 +74,17 @@ read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
                                           "2min avg wind speed (kts)",
                                           "5sec avg wind dir (deg)",
                                           "5sec avg wind speed (kts)")))
+                      },
+                      error = function(cond) {
+                            message(paste("404 not found:", con))
+                            return(NULL)
+                      })
     return(data)
 }
 
 read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
-    data <- read_fwf(con, fwf_positions(
+    data <- tryCatch({
+                        read_fwf(con, fwf_positions(
                                         c(1, 11, 33, 46, 71, 79, 87, 96, 101),
                                         c(9, 30, 34, 49, 76, 84, 92, 97, 102),
                                         c("station", "time",
@@ -88,6 +95,11 @@ read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
                                           "Pressure 3 (inches Hg)",
                                           "Dry bulb temp",
                                           "Dew point temp")))
+                      },
+                      error = function(cond) {
+                            message(paste("404 not found:", con))
+                            return(NULL)
+                      })
     return(data)
 }
 
