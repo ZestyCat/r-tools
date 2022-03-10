@@ -4,7 +4,7 @@ library(data.table)
 # Funtions for fetching environmental data from various sources
 
 # Download EPA annual concentration by monitor based on parameter and state
-get_epa <- function(year, param = NULL, state = NULL) {
+get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
     temp <- tempfile()
     url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
                  year,
@@ -17,6 +17,9 @@ get_epa <- function(year, param = NULL, state = NULL) {
     }
     if (!is.null(state)) {
         data <- filter(data, grepl(state, `State Name`, ignore.case = TRUE))
+    }
+    if (!is.null(county)) {
+        data <- filter(data, grepl(county, `County Name`, ignore.case = TRUE))
     }
 
     unlink(temp)
@@ -115,4 +118,23 @@ get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
              stop(print_info(ds = "asos", error = TRUE)))),
              "/", ds, "-", y, "/", ds, "0", cs, y, m, ".dat")
     )
+}
+
+read_station_list <- function(wban = NULL, call = NULL,
+                              state = NULL, county = NULL) {
+    con <- "https://www.ncei.noaa.gov/pub/data/ASOS_Station_Photos/asos-stations.txt"
+    temp <- tempfile()
+    download.file(con, temp) # Save data at url into tempfile
+    data <- read_fwf(temp, skip = 2) %>%
+            rename_at(vars(1:14), function(x) c("NCDCID", "WBAN",
+                                                "COOPID", "CALL",
+                                                "NAME", "ALT_NAME",
+                                                "COUNTRY", "STATE",
+                                                "COUNTY", "LAT", "LON",
+                                                "ELEV", "UTC", "TRNTYPE")) %>%
+            slice(-c(1, 2)) %>%
+            mutate(CALL = paste0("K", CALL)) %>%
+    
+    unlink(temp)
+    return(data)
 }
