@@ -33,45 +33,51 @@ get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
-get_asos <- function(dates, cs, download = FALSE) {
-    dates <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
+get_asos <- function(dates, cs, ...) {
+    dates <- unique(round.POSIXt(seq(as.Date(dates[1]),
+                                     as.Date(dates[2]),
+                                     by = 1),
+                    "months"))
+    d <- lapply(dates, function(x) {
+                    trim_and_write(read_6405_6406(x, cs))
+                 })
 
-    search_regex <- paste0( # Make a "|" separated regex of every date in range
-                       paste0(substr(cs, 2, 4), # Format (e.g. NZY20200615)
-                              format(dates, format = "%Y%m%d")),
-                       collapse = "|") # Separate vector with "|"
 
-    d6405 <- rbindlist(
-                lapply(
-                    unique(get_url(cs, 6405, dates)),
-                read_6405),
-              fill = TRUE) %>%
-            filter(grepl(search_regex, time)) %>%
-            mutate(time =
-                as.POSIXct(substr(time, 4, 17), format = "%Y%m%d%H%M"))
-
-    d6406 <- rbindlist(
-                lapply(
-                    unique(get_url(cs, 6406, dates)),
-                read_6406),
-             fill = TRUE) %>%
-            filter(grepl(search_regex, time)) %>%
-            mutate(time =
-                as.POSIXct(substr(time, 4, 17), format = "%Y%m%d%H%M"))
-
-    d <- left_join(d6405, d6406, by = c("station", "time"))
-
-    if (download == TRUE) {
-        fwrite(d, paste0("./asos_download_",
-                         as.character(format(Sys.time(),
-                                             format = "%Y-%m-%d_%H%M%S")),
-                         ".csv"))
-    }
     return(d)
 }
 
+read_6405_6406 <- function(date, cs, save = FALSE, ...) {
+    url_6405 <- get_url(cs, 6405, as.Date(date))
+    url_6406 <- get_url(cs, 6406, as.Date(date))
+    d_6405   <- read_6405(url_6405)
+    d_6406   <- read_6406(url_6406)
+    data     <- left_join(d_6405, d_6406, by = c("station", "time"))
+    tdata    <- trim_by_date(data, dates = ...)
+    
+    if (save == TRUE) write_asos(tdata, filename = ...)
+
+    return(tdata)
+}
+
+# Make a vector for every day in date range
+# Turn that vector into a | separated regex
+# Filter data based on the regex
+# Write, return
+trim_by_date <- function(x, dates) {
+    dates    <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
+    dates_rx <- paste0(paste0(format(dates, format = "%Y%m%d")), collapse = "|")
+    fdata    <- x %>% filter(grepl(dates_rx, time))
+    return(fdata)
+}
+
+write_asos <- function(x, filename = NULL) {
+    ifelse(is.null(filename),
+        fwrite(x, "./asos_download.csv", append = TRUE),
+        fwrite(x, filename, append = TRUE))
+}
+
 read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
-    data <- tryCatch( {
+    data <- tryCatch({
                         read_fwf(con, fwf_positions(
                                         c(1, 11, 72, 78, 82, 88),
                                         c(9, 30, 74, 79, 84, 89),
@@ -120,7 +126,7 @@ get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
     )
 }
 
-read_station_list <- function(wban = NULL, call = NULL,
+read_station_list <- function(wban = NULL, cs = NULL,
                               state = NULL, county = NULL) {
     con <- "https://www.ncei.noaa.gov/pub/data/ASOS_Station_Photos/asos-stations.txt"
     temp <- tempfile()
@@ -133,8 +139,26 @@ read_station_list <- function(wban = NULL, call = NULL,
                                                 "COUNTY", "LAT", "LON",
                                                 "ELEV", "UTC", "TRNTYPE")) %>%
             slice(-c(1, 2)) %>%
-            mutate(CALL = paste0("K", CALL)) %>%
+            mutate(CALL = paste0("K", CALL))
+
+    if (!is.null(wban)) {
+        data <- data %>% filter(WBAN == wban)
+    }
+    if (!is.null(cs)) {
+        data <- data %>% filter(CALL == cs)
+    }
+    if (!is.null(state)) {
+        data <- data %>% filter(STATE == state)
+    }
+    if (!is.null(county)) {
+        data <- data %>% filter(COUNTY == county)
+    }
     
     unlink(temp)
     return(data)
+}
+
+return_callsign_vector <- function(...) {
+    data <- read_station_list(...)
+    return(select(data, CALL)[[1]])
 }
