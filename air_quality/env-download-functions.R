@@ -33,26 +33,22 @@ get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
 # ds: Dataset (e.g. 6405, 6406, 6401)
 # Makes a sequence of dates, makes url list, reads each url, binds data
 # Filters where the date is not equal to the last day
-get_asos <- function(dates, cs, ...) {
-    dates <- unique(round.POSIXt(seq(as.Date(dates[1]),
-                                     as.Date(dates[2]),
-                                     by = 1),
-                    "months"))
-    d <- lapply(dates, function(x) {
-                    trim_and_write(read_6405_6406(x, cs))
-                 })
+get_asos <- function(daterange, cs, ...) {
 
-
+    d <- mapply(function(x, y) { 
+            read_6405_6406(x, y, dates = , save = ..., filename = ...)},
+            as.vector(expand.grid(dates, cs)[[1]]),
+            as.vector(expand.grid(dl, cs)[[2]]))
     return(d)
 }
 
-read_6405_6406 <- function(date, cs, save = FALSE, ...) {
+read_6405_6406 <- function(date, cs, daterange, save = FALSE, ...) {
     url_6405 <- get_url(cs, 6405, as.Date(date))
     url_6406 <- get_url(cs, 6406, as.Date(date))
     d_6405   <- read_6405(url_6405)
     d_6406   <- read_6406(url_6406)
     data     <- left_join(d_6405, d_6406, by = c("station", "time"))
-    tdata    <- trim_by_date(data, dates = ...)
+    tdata    <- trim_by_date(data, daterange = ...)
     
     if (save == TRUE) write_asos(tdata, filename = ...)
 
@@ -63,9 +59,9 @@ read_6405_6406 <- function(date, cs, save = FALSE, ...) {
 # Turn that vector into a | separated regex
 # Filter data based on the regex
 # Write, return
-trim_by_date <- function(x, dates) {
-    dates    <- seq(as.Date(dates[1]), as.Date(dates[2]), by = 1)
-    dates_rx <- paste0(paste0(format(dates, format = "%Y%m%d")), collapse = "|")
+trim_by_date <- function(x, daterange) {
+    dates    <- seq(as.Date(daterange[1]), as.Date(daterange[2]), by = 1)
+    dates_rx <- paste0(paste0(format(daterange, format = "%Y%m%d")), collapse = "|")
     fdata    <- x %>% filter(grepl(dates_rx, time))
     return(fdata)
 }
