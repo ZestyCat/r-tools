@@ -26,50 +26,45 @@ get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
     return(data)
 }
 
-# Download weather data from NCDC for specified parameters
-# Fetches from ftp://ftp.ncdc.noaa.gov/pub/data/
-# dates: date range to be extracted c(YYYY-MM-DD, YYYY-MM-DD)
-# cs: ICAO Callsign e.g. "KNZY", or vector of cs e.g. c("KNZY", "KHSV")
-# ds: Dataset (e.g. 6405, 6406, 6401)
-# Makes a sequence of dates, makes url list, reads each url, binds data
-# Filters where the date is not equal to the last day
-get_asos <- function(daterange, cs, ...) {
-
-    d <- mapply(function(x, y) { 
-            read_6405_6406(x, y, dates = , save = ..., filename = ...)},
-            as.vector(expand.grid(dates, cs)[[1]]),
-            as.vector(expand.grid(dl, cs)[[2]]))
-    return(d)
+# Get first day of each month within specified daterange vector
+# collect data for every combination of callsign and d_1
+collect_1min <- function(daterange, callsign, ...) {
+    d_1 <- unique(round.POSIXt(seq(as.Date(daterange[1]),
+                                   as.Date(daterange[2]),
+                                   by = 1), units = "months"))
+    data <- mapply(function(day, cs) { 
+                get_1min(day, cs, range = daterange, ...)},
+                as.vector(expand.grid(d_1, callsign)[[1]]),
+                as.vector(expand.grid(d_1, callsign)[[2]]),
+                SIMPLIFY = FALSE)
+    return(rbindlist(data))
 }
 
-read_6405_6406 <- function(date, cs, daterange, save = FALSE, ...) {
-    url_6405 <- get_url(cs, 6405, as.Date(date))
-    url_6406 <- get_url(cs, 6406, as.Date(date))
-    d_6405   <- read_6405(url_6405)
-    d_6406   <- read_6406(url_6406)
-    data     <- left_join(d_6405, d_6406, by = c("station", "time"))
-    tdata    <- trim_by_date(data, daterange = ...)
-    
-    if (save == TRUE) write_asos(tdata, filename = ...)
-
-    return(tdata)
+# Get 6406 and 6405 data url for day/callsign
+# trim returned data to the specified date range
+# save if true, return
+get_1min <- function(day, callsign, range, save = FALSE, file = NULL) {
+    urls <- c(get_url(callsign, 6405, day), get_url(callsign, 6406, day))
+    data <- trim_by_date(left_join(read_6405(urls[1]), read_6406(urls[2]),
+                            by = c("station", "time")), range)
+    if (save == TRUE) write_asos(data, file)
+    return(data)
 }
 
 # Make a vector for every day in date range
 # Turn that vector into a | separated regex
 # Filter data based on the regex
-# Write, return
+# Return
 trim_by_date <- function(x, daterange) {
     dates    <- seq(as.Date(daterange[1]), as.Date(daterange[2]), by = 1)
-    dates_rx <- paste0(paste0(format(daterange, format = "%Y%m%d")), collapse = "|")
-    fdata    <- x %>% filter(grepl(dates_rx, time))
+    dates_rgx <- paste(paste0(format(dates, format = "%Y%m%d")), collapse = "|")
+    fdata    <- filter(x, grepl(dates_rgx, time))
     return(fdata)
 }
 
 write_asos <- function(x, filename = NULL) {
-    ifelse(is.null(filename),
-        fwrite(x, "./asos_download.csv", append = TRUE),
-        fwrite(x, filename, append = TRUE))
+    if (is.null(filename))  fwrite(x, "./asos_download.csv", append = TRUE)
+    if (!is.null(filename)) fwrite(x, filename, append = TRUE)
 }
 
 read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
@@ -112,8 +107,8 @@ read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
 }
 
 get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
-    y <- format(date, format = "%Y")
-    m <- format(date, format = "%m")
+    y <- format(as.Date(date), format = "%Y")
+    m <- format(as.Date(date), format = "%m")
     return(paste0("https://www.ncei.noaa.gov/pub/data/",
              ifelse(ds == 6401, "asos-fivemin",
              ifelse(ds == 6405 | ds == 6406, "asos-onemin",
