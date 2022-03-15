@@ -2,9 +2,14 @@ library(tidyverse)
 library(data.table)
 
 # Funtions for fetching environmental data from various sources
+# Main funtions: collect_epa, collect_1min
+# collect_epa params: year, param, state, county
+# collect_1min params: daterange (character vector of start to end date),
+#                                 callsign (e.g. "KNZY"), save (TRUE/FALSE),
+#                                 file (filename with path e.g. ~/data/test.csv)
 
 # Download EPA annual concentration by monitor based on parameter and state
-get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
+get_annual_epa <- function(year, param = NULL, state = NULL, county = NULL) {
     temp <- tempfile()
     url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
                  year,
@@ -15,6 +20,30 @@ get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
     if (!is.null(param)) {
         data <- filter(data, grepl(param, `Parameter Name`, ignore.case = TRUE))
     }
+    if (!is.null(state)) {
+        data <- filter(data, grepl(state, `State Name`, ignore.case = TRUE))
+    }
+    if (!is.null(county)) {
+        data <- filter(data, grepl(county, `County Name`, ignore.case = TRUE))
+    }
+
+    unlink(temp)
+    return(data)
+}
+
+get_daily_epa <- function(year, param = "Ozone", state = NULL, county = NULL) {
+    code <- ifelse(grepl("ozone|O3", param, ignore.case = TRUE), 44201,
+            ifelse(grepl("sulf|sulph|so2", param, ignore.case = TRUE), 42401,
+            ifelse(grepl("carbon|co", param, ignore.case = TRUE), 42101,
+            ifelse(grepl("nitr|nox|no2", param, ignore.case = TRUE), 42602,
+            stop(print("Please choose a valid parameter (O3, SO2, CO, NO2)"))
+            ))))
+
+    temp <- tempfile()
+    url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/daily_", code, "_", year, ".zip")
+    download.file(url, temp) # Save data at url into tempfile
+    data <- read_csv(temp)
+
     if (!is.null(state)) {
         data <- filter(data, grepl(state, `State Name`, ignore.case = TRUE))
     }
