@@ -10,6 +10,7 @@ library(data.table)
 
 # Download EPA annual concentration by monitor based on parameter and state
 get_annual_epa <- function(year, param = NULL, state = NULL, county = NULL) {
+    options(timeout = 600)
     temp <- tempfile()
     url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
                  year,
@@ -26,12 +27,13 @@ get_annual_epa <- function(year, param = NULL, state = NULL, county = NULL) {
     if (!is.null(county)) {
         data <- filter(data, grepl(county, `County Name`, ignore.case = TRUE))
     }
-
+    options(timeout = 60)
     unlink(temp)
     return(data)
 }
 
 get_daily_epa <- function(year, param = "Ozone", state = NULL, county = NULL) {
+    options(timeout = 600)
     code <- ifelse(grepl("ozone|O3", param, ignore.case = TRUE), 44201,
             ifelse(grepl("sulf|sulph|so2", param, ignore.case = TRUE), 42401,
             ifelse(grepl("carbon|co", param, ignore.case = TRUE), 42101,
@@ -50,7 +52,7 @@ get_daily_epa <- function(year, param = "Ozone", state = NULL, county = NULL) {
     if (!is.null(county)) {
         data <- filter(data, grepl(county, `County Name`, ignore.case = TRUE))
     }
-
+    options(timeout = 60)
     unlink(temp)
     return(data)
 }
@@ -146,8 +148,8 @@ get_url <- function(cs, ds, date) { # Callsign, dataset, year, month
     )
 }
 
-read_station_list <- function(wban = NULL, cs = NULL,
-                              state = NULL, county = NULL) {
+read_station_list <- function(wban = NULL, cs = NULL, state = NULL,
+                              county = NULL, select_cols = NULL) {
     con <- "https://www.ncei.noaa.gov/pub/data/ASOS_Station_Photos/asos-stations.txt"
     temp <- tempfile()
     download.file(con, temp) # Save data at url into tempfile
@@ -172,6 +174,9 @@ read_station_list <- function(wban = NULL, cs = NULL,
     }
     if (!is.null(county)) {
         data <- data %>% filter(COUNTY == county)
+    }
+    if (!is.null(select_cols)) {
+        data <- data %>% select(select_cols)
     }
     
     unlink(temp)
