@@ -107,7 +107,8 @@ read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
                                           "2min avg wind dir (deg)",
                                           "2min avg wind speed (kts)",
                                           "5sec avg wind dir (deg)",
-                                          "5sec avg wind speed (kts)")))
+                                          "5sec avg wind speed (kts)")),
+                         col_types = list("c", "c", "i", "i", "i", "i"))
                       },
                       error = function(cond) {
                             message(paste("404 not found:", con))
@@ -128,7 +129,9 @@ read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
                                           "Pressure 2 (inches Hg)",
                                           "Pressure 3 (inches Hg)",
                                           "Dry bulb temp",
-                                          "Dew point temp")))
+                                          "Dew point temp")),
+                        col_types = list("c", "c", "c", "d", "d",
+                                         "d", "d", "d", "d"))
                       },
                       error = function(cond) {
                             message(paste("404 not found:", con))
