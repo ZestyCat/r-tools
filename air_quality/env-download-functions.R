@@ -5,12 +5,14 @@ library(data.table)
 
 # Download EPA annual concentration by monitor based on parameter and state
 get_epa <- function(year, param = NULL, state = NULL, county = NULL) {
-    temp <- tempfile()
     url  <- paste0("https://aqs.epa.gov/aqsweb/airdata/annual_conc_by_monitor_",
                  year,
                  ".zip")
-    download.file(url, temp) # Save data at url into tempfile
-    data <- read_csv(temp)
+    data <- rbindlist(lapply(url, function(url) {
+                                   temp <- tempfile()
+                                   download.file(url, temp)
+                                   return(read_csv(temp))
+                                   }))
 
     if (!is.null(param)) {
         data <- filter(data, grepl(param, `Parameter Name`, ignore.case = TRUE))
@@ -135,6 +137,5 @@ read_station_list <- function(wban = NULL, call = NULL,
             slice(-c(1, 2)) %>%
             mutate(CALL = paste0("K", CALL)) %>%
     
-    unlink(temp)
     return(data)
 }
