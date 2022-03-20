@@ -63,7 +63,7 @@ collect_1min <- function(daterange, callsign, ...) {
     d_1 <- unique(round.POSIXt(seq(as.Date(daterange[1]),
                                    as.Date(daterange[2]),
                                    by = 1), units = "months"))
-    
+    data <- tempfile()
     mapply(function(day, cs) { 
                 get_1min(day, cs, range = daterange, save = TRUE, ...)},
                 as.vector(expand.grid(d_1, callsign)[[1]]),
