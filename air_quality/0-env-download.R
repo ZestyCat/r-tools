@@ -63,13 +63,12 @@ collect_1min <- function(daterange, callsign, ...) {
     d_1 <- unique(round.POSIXt(seq(as.Date(daterange[1]),
                                    as.Date(daterange[2]),
                                    by = 1), units = "months"))
-    #data <- 
+    
     mapply(function(day, cs) { 
                 get_1min(day, cs, range = daterange, save = TRUE, ...)},
                 as.vector(expand.grid(d_1, callsign)[[1]]),
                 as.vector(expand.grid(d_1, callsign)[[2]]),
                 SIMPLIFY = FALSE)
-    #return(rbindlist(data))
 }
 
 # Get 6406 and 6405 data url for day/callsign
@@ -82,7 +81,7 @@ get_1min <- function(day, callsign, range, save = FALSE, file = NULL) {
                 trim_by_date(left_join(read_6405(urls[1]), read_6406(urls[2]),
                                         by = c("station", "time")), range)},
                 error = function(cond) {
-                    message("Error, trying to join something to nothing.")
+                    message("Trying to join something that doesn't exist.")
                 })
     if (save == TRUE && is.data.frame(data)) write_asos(data, file)
     return(data)
