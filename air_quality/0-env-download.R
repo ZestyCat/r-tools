@@ -63,22 +63,27 @@ collect_1min <- function(daterange, callsign, ...) {
     d_1 <- unique(round.POSIXt(seq(as.Date(daterange[1]),
                                    as.Date(daterange[2]),
                                    by = 1), units = "months"))
-    data <- mapply(function(day, cs) { 
-                get_1min(day, cs, range = daterange, ...)},
+    data <- tempfile()
+    mapply(function(day, cs) { 
+                get_1min(day, cs, range = daterange, save = TRUE, ...)},
                 as.vector(expand.grid(d_1, callsign)[[1]]),
                 as.vector(expand.grid(d_1, callsign)[[2]]),
                 SIMPLIFY = FALSE)
-    return(rbindlist(data))
 }
 
 # Get 6406 and 6405 data url for day/callsign
 # trim returned data to the specified date range
+# return error for missing data, check for data.frame before writing
 # save if true, return
 get_1min <- function(day, callsign, range, save = FALSE, file = NULL) {
     urls <- c(get_url(callsign, 6405, day), get_url(callsign, 6406, day))
-    data <- trim_by_date(left_join(read_6405(urls[1]), read_6406(urls[2]),
-                            by = c("station", "time")), range)
-    if (save == TRUE) write_asos(data, file)
+    data <- tryCatch({
+                trim_by_date(left_join(read_6405(urls[1]), read_6406(urls[2]),
+                                        by = c("station", "time")), range)},
+                error = function(cond) {
+                    message("Trying to join something that doesn't exist.")
+                })
+    if (save == TRUE && is.data.frame(data)) write_asos(data, file)
     return(data)
 }
 
@@ -111,7 +116,7 @@ read_6405 <- function(con) { # Reads ASOS wind data (6405) as fixed width file
                          col_types = list("c", "c", "i", "i", "i", "i"))
                       },
                       error = function(cond) {
-                            message(paste("404 not found:", con))
+                            message(paste("Could not access that URL:", con))
                             return(NULL)
                       })
     return(data)
@@ -134,7 +139,7 @@ read_6406 <- function(con) { # Reads ASOS temp data (6406) as fixed width file
                                          "d", "d", "d", "d"))
                       },
                       error = function(cond) {
-                            message(paste("404 not found:", con))
+                            message(paste("Could not access that URL:", con))
                             return(NULL)
                       })
     return(data)
