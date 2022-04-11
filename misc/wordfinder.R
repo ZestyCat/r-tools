@@ -6,7 +6,7 @@ find_word <- function(word = "hey") {
     i <- 0
     while (TRUE) {
         set.seed(i)
-        w <- paste0(sample(letters, l), collapse = "")
+        w <- paste0(sample(letters, l, replace = TRUE), collapse = "")
         print(paste(w, "seed:", i))
         if (w == word) {
             print("Match")
