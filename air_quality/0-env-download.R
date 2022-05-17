@@ -34,7 +34,7 @@ get_annual_epa <- function(year, param = NULL, state = NULL, county = NULL) {
 
 get_daily_epa <- function(year, param = "Ozone", state = NULL, county = NULL) {
     options(timeout = 600)
-    code <- ifelse(grepl("ozone|O3", param, ignore.case = TRUE), 44201,
+    code <- ifelse(grepl("ozone|O3", param, ignore.case = TRUE), 44201, # Convert param to relevant code
             ifelse(grepl("sulf|sulph|so2", param, ignore.case = TRUE), 42401,
             ifelse(grepl("carbon|co", param, ignore.case = TRUE), 42101,
             ifelse(grepl("nitr|nox|no2", param, ignore.case = TRUE), 42602,
@@ -57,14 +57,13 @@ get_daily_epa <- function(year, param = "Ozone", state = NULL, county = NULL) {
     return(data)
 }
 
-# Get first day of each month within specified daterange vector
-# collect data for every combination of callsign and d_1
+# collect 1min ASOS data for every combination of callsign and d_1 within daterange
 collect_1min <- function(daterange, callsign, ...) {
     d_1 <- unique(round.POSIXt(seq(as.Date(daterange[1]),
                                    as.Date(daterange[2]),
                                    by = 1), units = "months"))
     data <- tempfile()
-    mapply(function(day, cs) { 
+    mapply(function(day, cs) { # Run get_1min() for every combo of date/callsign
                 get_1min(day, cs, range = daterange, save = TRUE, ...)},
                 as.vector(expand.grid(d_1, callsign)[[1]]),
                 as.vector(expand.grid(d_1, callsign)[[2]]),
@@ -87,14 +86,11 @@ get_1min <- function(day, callsign, range, save = FALSE, file = NULL) {
     return(data)
 }
 
-# Make a vector for every day in date range
-# Turn that vector into a | separated regex
-# Filter data based on the regex
-# Return
+# Specify daterange to filter a dataframe (x)
 trim_by_date <- function(x, daterange) {
-    dates    <- seq(as.Date(daterange[1]), as.Date(daterange[2]), by = 1)
-    dates_rgx <- paste(paste0(format(dates, format = "%Y%m%d")), collapse = "|")
-    fdata    <- filter(x, grepl(dates_rgx, time))
+    dates    <- seq(as.Date(daterange[1]), as.Date(daterange[2]), by = 1) # Vector of valid dates
+    dates_rgx <- paste(paste0(format(dates, format = "%Y%m%d")), collapse = "|") # Regex of valid dates
+    fdata    <- filter(x, grepl(dates_rgx, time)) # Filter by valid dates
     return(fdata)
 }
 
